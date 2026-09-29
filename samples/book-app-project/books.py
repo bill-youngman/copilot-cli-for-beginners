@@ -13,6 +13,41 @@ class Book:
     read: bool = False
 
 
+@dataclass
+class BookStatistics:
+    total: int
+    read: int
+    unread: int
+    oldest: Optional[Book]
+    newest: Optional[Book]
+
+
+def get_book_statistics(books: List[Book]) -> BookStatistics:
+    """Compute summary statistics for a list of books.
+
+    Args:
+        books: The books to summarize.
+
+    Returns:
+        A BookStatistics with the total count, read/unread counts, and the
+        oldest/newest book by publication year. ``oldest``/``newest`` are
+        ``None`` when ``books`` is empty.
+    """
+    total = len(books)
+    read_count = sum(1 for b in books if b.read)
+
+    oldest = min(books, key=lambda b: b.year) if books else None
+    newest = max(books, key=lambda b: b.year) if books else None
+
+    return BookStatistics(
+        total=total,
+        read=read_count,
+        unread=total - read_count,
+        oldest=oldest,
+        newest=newest,
+    )
+
+
 class BookCollection:
     def __init__(self):
         self.books: List[Book] = []
@@ -70,3 +105,34 @@ class BookCollection:
     def find_by_author(self, author: str) -> List[Book]:
         """Find all books by a given author."""
         return [b for b in self.books if b.author.lower() == author.lower()]
+
+    def search_books(
+        self, query: str = "", read_status: Optional[bool] = None
+    ) -> List[Book]:
+        """Search books by a free-text query matched against title/author.
+
+        Args:
+            query: Case-insensitive substring matched against the title or
+                author. An empty string matches every book.
+            read_status: If not ``None``, further filter to books whose
+                ``read`` flag equals this value.
+
+        Returns:
+            Books matching the query (if any) and the read-status filter
+            (if any). Both filters combine with AND semantics.
+        """
+        normalized_query = query.strip().lower()
+
+        results = self.books
+        if normalized_query:
+            results = [
+                b
+                for b in results
+                if normalized_query in b.title.lower()
+                or normalized_query in b.author.lower()
+            ]
+
+        if read_status is not None:
+            results = [b for b in results if b.read == read_status]
+
+        return results
