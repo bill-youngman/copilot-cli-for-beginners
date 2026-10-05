@@ -12,13 +12,43 @@ def print_menu() -> None:
     print("5. Exit")
 
 
+VALID_CHOICES = {"1", "2", "3", "4", "5"}
+
+
 def get_user_choice() -> str:
-    return input("Choose an option (1-5): ").strip()
+    """Keep prompting until the user enters a valid menu option (1-5)."""
+    while True:
+        choice = input("Choose an option (1-5): ").strip()
+
+        if not choice:
+            print("No input entered. Please enter a number from 1 to 5.")
+            continue
+
+        if not choice.isdigit() or choice not in VALID_CHOICES:
+            print(f"'{choice}' is not a valid option. Please enter a number from 1 to 5.")
+            continue
+
+        return choice
 
 
 def get_book_details() -> Tuple[str, str, int]:
-    title = input("Enter book title: ").strip()
-    author = input("Enter author: ").strip()
+    """Prompt the user for details of a new book and return the parsed values.
+
+    Prompts (in order):
+        - Book title: re-prompts until a non-empty value is entered.
+        - Author: re-prompts until a non-empty value is entered.
+        - Publication year: parsed as an integer. If the input is not a
+          valid whole number, a warning is printed and the year defaults
+          to ``0`` instead of re-prompting.
+
+    Returns:
+        Tuple[str, str, int]: A ``(title, author, year)`` tuple, where
+        ``title`` and ``author`` are guaranteed non-empty strings and
+        ``year`` is an ``int`` (``0`` if the user's input wasn't a valid
+        whole number).
+    """
+    title = _get_required_text("Enter book title: ")
+    author = _get_required_text("Enter author: ")
 
     year_input = input("Enter publication year: ").strip()
     try:
@@ -28,6 +58,15 @@ def get_book_details() -> Tuple[str, str, int]:
         year = 0
 
     return title, author, year
+
+
+def _get_required_text(prompt: str) -> str:
+    """Keep prompting until the user provides a non-empty value."""
+    while True:
+        value = input(prompt).strip()
+        if value:
+            return value
+        print("This field cannot be empty. Please try again.")
 
 
 def print_books(books: List[Book]) -> None:

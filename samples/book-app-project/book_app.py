@@ -1,7 +1,12 @@
 import sys
-from typing import List, Optional
+from typing import Callable, Dict, List, Optional
 
 from books import Book, BookCollection
+
+
+def print_error(message: str) -> None:
+    """Print a consistently formatted error message."""
+    print(f"\nError: {message}\n")
 
 
 def show_books(books: List[Book]) -> None:
@@ -53,7 +58,7 @@ def handle_add(collection: BookCollection) -> None:
         collection.add_book(title, author, year)
         print("\nBook added successfully.\n")
     except ValueError as e:
-        print(f"\nError: {e}\n")
+        print_error(str(e))
 
 
 def handle_remove(collection: BookCollection) -> None:
@@ -61,12 +66,13 @@ def handle_remove(collection: BookCollection) -> None:
 
     title = input("Enter the title of the book to remove: ").strip()
     if not title:
-        print("\nError: Title cannot be empty.\n")
+        print_error("Title cannot be empty.")
         return
 
-    collection.remove_book(title)
-
-    print("\nBook removed if it existed.\n")
+    if collection.remove_book(title):
+        print(f"\n'{title}' removed.\n")
+    else:
+        print_error(f"No book found with the title '{title}'.")
 
 
 def handle_mark_read(collection: BookCollection) -> None:
@@ -74,12 +80,12 @@ def handle_mark_read(collection: BookCollection) -> None:
 
     title = input("Enter the title of the book to mark as read: ").strip()
     if not title:
-        print("\nError: Title cannot be empty.\n")
+        print_error("Title cannot be empty.")
         return
 
     book = collection.find_book_by_title(title)
     if book is None:
-        print(f"\nError: No book found with the title '{title}'.\n")
+        print_error(f"No book found with the title '{title}'.")
         return
 
     if book.read:
@@ -95,7 +101,7 @@ def handle_find(collection: BookCollection) -> None:
 
     author = input("Author name: ").strip()
     if not author:
-        print("\nError: Author cannot be empty.\n")
+        print_error("Author cannot be empty.")
         return
 
     books = collection.find_by_author(author)
@@ -129,19 +135,23 @@ def handle_search(collection: BookCollection) -> None:
     show_books(books)
 
 
-def show_help() -> None:
-    print("""
-Book Collection Helper
+COMMANDS: Dict[str, Callable[[BookCollection], None]] = {}
+COMMAND_DESCRIPTIONS: Dict[str, str] = {
+    "list": "Show all books",
+    "add": "Add a new book",
+    "remove": "Remove a book by title",
+    "find": "Find books by author",
+    "search": "Search by title/author with an optional read-status filter",
+    "mark-read": "Mark a book as read",
+}
 
-Commands:
-  list       - Show all books
-  add        - Add a new book
-  remove     - Remove a book by title
-  find       - Find books by author
-  search     - Search by title/author with an optional read-status filter
-  mark-read  - Mark a book as read
-  help       - Show this help message
-""")
+
+def show_help() -> None:
+    print("\nBook Collection Helper\n\nCommands:")
+    width = max(len(name) for name in COMMAND_DESCRIPTIONS)
+    for name, description in COMMAND_DESCRIPTIONS.items():
+        print(f"  {name.ljust(width)}  - {description}")
+    print(f"  {'help'.ljust(width)}  - Show this help message\n")
 
 
 def main() -> None:
@@ -150,25 +160,37 @@ def main() -> None:
         return
 
     command = sys.argv[1].lower()
-    collection = BookCollection()
 
-    if command == "list":
-        handle_list(collection)
-    elif command == "add":
-        handle_add(collection)
-    elif command == "remove":
-        handle_remove(collection)
-    elif command == "find":
-        handle_find(collection)
-    elif command == "search":
-        handle_search(collection)
-    elif command == "mark-read":
-        handle_mark_read(collection)
-    elif command == "help":
+    if len(sys.argv) > 2:
+        print(f"Note: ignoring extra arguments: {' '.join(sys.argv[2:])}\n")
+
+    if command == "help":
         show_help()
-    else:
+        return
+
+    handler = COMMANDS.get(command)
+    if handler is None:
         print("Unknown command.\n")
         show_help()
+        return
+
+    collection = BookCollection()
+    try:
+        handler(collection)
+    except OSError as e:
+        print_error(f"Could not read or write the data file: {e}")
+
+
+COMMANDS.update(
+    {
+        "list": handle_list,
+        "add": handle_add,
+        "remove": handle_remove,
+        "find": handle_find,
+        "search": handle_search,
+        "mark-read": handle_mark_read,
+    }
+)
 
 
 if __name__ == "__main__":
